@@ -24,6 +24,9 @@ from .symbol_info import SymbolInfo
 from .syntax_error import SyntaxErrorException
 from .token import Token
 from .token_type import TokenType
+from .type_checker import TypeChecker
+from .type_environment import TypeEnvironment
+from .type_info import TypeInfo
 
 __all__ = [
     "AssignStmt",
@@ -46,6 +49,9 @@ __all__ = [
     "SyntaxErrorException",
     "Token",
     "TokenType",
+    "TypeChecker",
+    "TypeEnvironment",
+    "TypeInfo",
     "UnaryExpr",
     "VarStmt",
     "WhileStmt",
