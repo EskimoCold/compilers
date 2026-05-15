@@ -6,12 +6,16 @@ from .ast_nodes import (
     AssignStmt,
     BinaryExpr,
     BlockStmt,
+    CallExpr,
     Expr,
+    ExprStmt,
+    FunctionStmt,
     GroupExpr,
     IdentifierExpr,
     IfStmt,
     NumberLiteral,
     PrintStmt,
+    ReturnStmt,
     Script,
     Stmt,
     StringLiteral,
@@ -21,6 +25,11 @@ from .ast_nodes import (
 )
 from .runtime_environment import RuntimeEnvironment
 from .token_type import TokenType
+
+
+class ReturnException(Exception):
+    def __init__(self, value: Any) -> None:
+        self.value = value
 
 
 class Interpreter:
@@ -45,6 +54,12 @@ class Interpreter:
             self._exec_if(statement)
         elif isinstance(statement, WhileStmt):
             self._exec_while(statement)
+        elif isinstance(statement, FunctionStmt):
+            self._exec_function(statement)
+        elif isinstance(statement, ReturnStmt):
+            self._exec_return(statement)
+        elif isinstance(statement, ExprStmt):
+            self.eval(statement.expr)
         else:
             raise RuntimeError(f"Unsupported statement: {type(statement).__name__}")
 
@@ -61,6 +76,8 @@ class Interpreter:
             return self._eval_unary(expression)
         if isinstance(expression, BinaryExpr):
             return self._eval_binary(expression)
+        if isinstance(expression, CallExpr):
+            return self._eval_call(expression)
         raise RuntimeError(f"Unsupported expression: {type(expression).__name__}")
 
     def _exec_var(self, stmt: VarStmt) -> None:
@@ -93,6 +110,32 @@ class Interpreter:
     def _exec_while(self, stmt: WhileStmt) -> None:
         while _is_truthy(self.eval(stmt.condition)):
             self.exec(stmt.body)
+
+    def _exec_function(self, stmt: FunctionStmt) -> None:
+        self._environment.define_function(stmt.name, stmt)
+
+    def _exec_return(self, stmt: ReturnStmt) -> None:
+        value = self.eval(stmt.value) if stmt.value is not None else None
+        raise ReturnException(value)
+
+    def _eval_call(self, expr: CallExpr) -> Any:
+        func_decl = self._environment.get_function(expr.callee_name)
+        args = [self.eval(arg) for arg in expr.arguments]
+
+        call_env = RuntimeEnvironment(self._environment)
+        for i, param in enumerate(func_decl.params):
+            call_env.define(param, args[i] if i < len(args) else None)
+
+        previous_env = self._environment
+        self._environment = call_env
+        try:
+            for inner_stmt in func_decl.body.statements:
+                self.exec(inner_stmt)
+        except ReturnException as ret:
+            return ret.value
+        finally:
+            self._environment = previous_env
+        return None
 
     def _eval_unary(self, expr: UnaryExpr) -> Any:
         operand = self.eval(expr.operand)

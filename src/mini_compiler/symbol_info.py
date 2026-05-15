@@ -8,3 +8,4 @@ class SymbolInfo:
     name: str
     is_initialized: bool = False
     is_used: bool = False
+    arity: int | None = None

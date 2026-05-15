@@ -60,6 +60,10 @@ class Lexer:
             self._add_token(result, TokenType.ELSE, word, start)
         elif word == "while":
             self._add_token(result, TokenType.WHILE, word, start)
+        elif word == "fun":
+            self._add_token(result, TokenType.FUNC, word, start)
+        elif word == "return":
+            self._add_token(result, TokenType.RETURN, word, start)
         else:
             self._add_token(result, TokenType.ID, word, start)
 
@@ -110,6 +114,9 @@ class Lexer:
         elif current == ";":
             self._next()
             self._add_token(result, TokenType.SEMICOLON, ";", start)
+        elif current == ",":
+            self._next()
+            self._add_token(result, TokenType.COMMA, ",", start)
         elif current == "=":
             if self._peek(1) == "=":
                 self._next()

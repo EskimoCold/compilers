@@ -4,12 +4,16 @@ from .ast_nodes import (
     AssignStmt,
     BinaryExpr,
     BlockStmt,
+    CallExpr,
     Expr,
+    ExprStmt,
+    FunctionStmt,
     GroupExpr,
     IdentifierExpr,
     IfStmt,
     NumberLiteral,
     PrintStmt,
+    ReturnStmt,
     Script,
     Stmt,
     StringLiteral,
@@ -48,6 +52,13 @@ class SemanticAnalyzer:
             self._analyze_if_stmt(statement)
         elif isinstance(statement, WhileStmt):
             self._analyze_while_stmt(statement)
+        elif isinstance(statement, FunctionStmt):
+            self._analyze_function_stmt(statement)
+        elif isinstance(statement, ReturnStmt):
+            if statement.value is not None:
+                self._visit_expression(statement.value)
+        elif isinstance(statement, ExprStmt):
+            self._visit_expression(statement.expr)
         else:
             self._errors.append(f"Unsupported statement: {type(statement).__name__}")
 
@@ -67,6 +78,9 @@ class SemanticAnalyzer:
             return
         if isinstance(expression, GroupExpr):
             self._visit_expression(expression.inner)
+            return
+        if isinstance(expression, CallExpr):
+            self._analyze_call_expr(expression)
             return
         self._errors.append(f"Unsupported expression: {type(expression).__name__}")
 
@@ -111,6 +125,49 @@ class SemanticAnalyzer:
     def _analyze_while_stmt(self, stmt: WhileStmt) -> None:
         self._visit_expression(stmt.condition)
         self._visit_statement(stmt.body)
+
+    def _analyze_function_stmt(self, stmt: FunctionStmt) -> None:
+        if not self._environment.define_function(stmt.name, len(stmt.params)):
+            self._errors.append(
+                f"Function '{stmt.name}' is already declared in this scope."
+            )
+            return
+
+        previous_environment = self._environment
+        self._environment = SemanticEnvironment(previous_environment)
+
+        for param in stmt.params:
+            if not self._environment.define_variable(param, is_initialized=True):
+                self._errors.append(
+                    f"Duplicate parameter '{param}' in function '{stmt.name}'."
+                )
+            else:
+                symbol = self._environment.get_variable(param)
+                if symbol is not None:
+                    symbol.is_used = True
+
+        for inner in stmt.body.statements:
+            self._visit_statement(inner)
+
+        self._check_unused_variables()
+        self._environment = previous_environment
+
+    def _analyze_call_expr(self, expr: CallExpr) -> None:
+        symbol = self._environment.get_variable(expr.callee_name)
+        if symbol is None or symbol.arity is None:
+            self._errors.append(f"Call to undefined function '{expr.callee_name}'.")
+            return
+
+        symbol.is_used = True
+
+        if len(expr.arguments) != symbol.arity:
+            self._errors.append(
+                f"Function '{expr.callee_name}' expects {symbol.arity} argument(s), "
+                f"got {len(expr.arguments)}."
+            )
+
+        for arg in expr.arguments:
+            self._visit_expression(arg)
 
     def _analyze_identifier_expr(self, expr: IdentifierExpr) -> None:
         symbol = self._environment.get_variable(expr.name)

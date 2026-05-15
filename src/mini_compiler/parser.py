@@ -4,12 +4,16 @@ from .ast_nodes import (
     AssignStmt,
     BinaryExpr,
     BlockStmt,
+    CallExpr,
     Expr,
+    ExprStmt,
+    FunctionStmt,
     GroupExpr,
     IdentifierExpr,
     IfStmt,
     NumberLiteral,
     PrintStmt,
+    ReturnStmt,
     Script,
     Stmt,
     StringLiteral,
@@ -36,6 +40,9 @@ class Parser:
         return Script(tuple(statements))
 
     def _statement(self) -> Stmt:
+        if self._match(TokenType.FUNC):
+            return self._parse_function()
+
         if self._match(TokenType.VAR):
             return self._parse_var_decl()
 
@@ -48,13 +55,44 @@ class Parser:
         if self._match(TokenType.WHILE):
             return self._parse_while()
 
+        if self._match(TokenType.RETURN):
+            return self._parse_return()
+
         if self._match(TokenType.LBRACE):
             return self._parse_block()
 
         if self._check(TokenType.ID) and self._check_next(TokenType.EQ):
             return self._parse_assign()
 
+        if self._check(TokenType.ID) and self._check_next(TokenType.LPAREN):
+            return self._parse_expr_stmt()
+
         raise self._error(self._peek(), "Expected statement")
+
+    def _parse_function(self) -> Stmt:
+        name = self._consume(TokenType.ID, "Expected function name").value
+        self._consume(TokenType.LPAREN, "Expected '(' after function name")
+        params: list[str] = []
+        if not self._check(TokenType.RPAREN):
+            params.append(self._consume(TokenType.ID, "Expected parameter name").value)
+            while self._match(TokenType.COMMA):
+                params.append(self._consume(TokenType.ID, "Expected parameter name").value)
+        self._consume(TokenType.RPAREN, "Expected ')' after parameters")
+        self._consume(TokenType.LBRACE, "Expected '{' before function body")
+        body = self._parse_block()
+        return FunctionStmt(name, tuple(params), body)  # type: ignore[arg-type]
+
+    def _parse_return(self) -> Stmt:
+        value: Expr | None = None
+        if not self._check(TokenType.SEMICOLON):
+            value = self._parse_expression()
+        self._consume(TokenType.SEMICOLON, "Expected ';' after return")
+        return ReturnStmt(value)
+
+    def _parse_expr_stmt(self) -> Stmt:
+        expr = self._parse_expression()
+        self._consume(TokenType.SEMICOLON, "Expected ';' after expression")
+        return ExprStmt(expr)
 
     def _parse_var_decl(self) -> Stmt:
         name = self._consume(TokenType.ID, "Expected variable name").value
@@ -155,7 +193,22 @@ class Parser:
             op = self._previous().type
             right = self._parse_unary()
             return UnaryExpr(op, right)
-        return self._parse_primary()
+        return self._parse_call()
+
+    def _parse_call(self) -> Expr:
+        expr = self._parse_primary()
+        while self._match(TokenType.LPAREN):
+            args: list[Expr] = []
+            if not self._check(TokenType.RPAREN):
+                args.append(self._parse_expression())
+                while self._match(TokenType.COMMA):
+                    args.append(self._parse_expression())
+            self._consume(TokenType.RPAREN, "Expected ')' after arguments")
+            if isinstance(expr, IdentifierExpr):
+                expr = CallExpr(expr.name, tuple(args))
+            else:
+                raise self._error(self._previous(), "Expected function name before '('")
+        return expr
 
     def _parse_primary(self) -> Expr:
         if self._match(TokenType.NUMBER):

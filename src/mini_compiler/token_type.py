@@ -11,6 +11,8 @@ class TokenType(Enum):
     IF = auto()
     ELSE = auto()
     WHILE = auto()
+    FUNC = auto()
+    RETURN = auto()
 
     PLUS = auto()
     MINUS = auto()
@@ -32,5 +34,6 @@ class TokenType(Enum):
     LBRACE = auto()
     RBRACE = auto()
     SEMICOLON = auto()
+    COMMA = auto()
 
     EOF = auto()

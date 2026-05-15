@@ -8,6 +8,14 @@ class SemanticEnvironment:
         self._parent = parent
         self._variables: dict[str, SymbolInfo] = {}
 
+    def define_function(self, name: str, arity: int) -> bool:
+        if name in self._variables:
+            return False
+        self._variables[name] = SymbolInfo(
+            name=name, is_initialized=True, is_used=True, arity=arity
+        )
+        return True
+
     def define_variable(self, name: str, is_initialized: bool) -> bool:
         if name in self._variables:
             return False
