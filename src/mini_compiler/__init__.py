@@ -16,8 +16,10 @@ from .ast_nodes import (
     WhileStmt,
 )
 from .ast_printer import format_tree
+from .interpreter import Interpreter
 from .lexer import Lexer
 from .parser import Parser
+from .runtime_environment import RuntimeEnvironment
 from .semantic_analyzer import SemanticAnalyzer
 from .semantic_environment import SemanticEnvironment
 from .symbol_info import SymbolInfo
@@ -36,10 +38,12 @@ __all__ = [
     "GroupExpr",
     "IdentifierExpr",
     "IfStmt",
+    "Interpreter",
     "Lexer",
     "NumberLiteral",
     "Parser",
     "PrintStmt",
+    "RuntimeEnvironment",
     "Script",
     "SemanticAnalyzer",
     "SemanticEnvironment",
