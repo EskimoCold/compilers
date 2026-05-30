@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .ast_nodes import (
+    ArrayLiteral,
     AssignStmt,
     BinaryExpr,
     BlockStmt,
@@ -11,6 +12,8 @@ from .ast_nodes import (
     GroupExpr,
     IdentifierExpr,
     IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
     NumberLiteral,
     PrintStmt,
     ReturnStmt,
@@ -59,6 +62,8 @@ class SemanticAnalyzer:
                 self._visit_expression(statement.value)
         elif isinstance(statement, ExprStmt):
             self._visit_expression(statement.expr)
+        elif isinstance(statement, IndexAssignStmt):
+            self._analyze_index_assign_stmt(statement)
         else:
             self._errors.append(f"Unsupported statement: {type(statement).__name__}")
 
@@ -81,6 +86,14 @@ class SemanticAnalyzer:
             return
         if isinstance(expression, CallExpr):
             self._analyze_call_expr(expression)
+            return
+        if isinstance(expression, ArrayLiteral):
+            for el in expression.elements:
+                self._visit_expression(el)
+            return
+        if isinstance(expression, IndexExpr):
+            self._visit_expression(expression.array)
+            self._visit_expression(expression.index)
             return
         self._errors.append(f"Unsupported expression: {type(expression).__name__}")
 
@@ -168,6 +181,18 @@ class SemanticAnalyzer:
 
         for arg in expr.arguments:
             self._visit_expression(arg)
+
+    def _analyze_index_assign_stmt(self, stmt: IndexAssignStmt) -> None:
+        if not self._environment.is_variable_defined(stmt.array_name):
+            self._errors.append(
+                f"Assignment to undeclared variable '{stmt.array_name}'."
+            )
+        else:
+            symbol = self._environment.get_variable(stmt.array_name)
+            if symbol is not None:
+                symbol.is_used = True
+        self._visit_expression(stmt.index)
+        self._visit_expression(stmt.value)
 
     def _analyze_identifier_expr(self, expr: IdentifierExpr) -> None:
         symbol = self._environment.get_variable(expr.name)

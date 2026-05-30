@@ -1,4 +1,5 @@
 from .ast_nodes import (
+    ArrayLiteral,
     AssignStmt,
     BinaryExpr,
     BlockStmt,
@@ -9,6 +10,8 @@ from .ast_nodes import (
     GroupExpr,
     IdentifierExpr,
     IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
     NumberLiteral,
     PrintStmt,
     ReturnStmt,
@@ -22,6 +25,7 @@ from .ast_nodes import (
 from .ast_printer import format_tree
 from .interpreter import Interpreter
 from .lexer import Lexer
+from .optimizer import DeadCodeOptimizer
 from .parser import Parser
 from .runtime_environment import RuntimeEnvironment
 from .semantic_analyzer import SemanticAnalyzer
@@ -35,13 +39,17 @@ from .type_environment import TypeEnvironment
 from .type_info import TypeInfo
 
 __all__ = [
+    "ArrayLiteral",
     "AssignStmt",
     "BinaryExpr",
     "BlockStmt",
     "CallExpr",
+    "DeadCodeOptimizer",
     "Expr",
     "ExprStmt",
     "FunctionStmt",
+    "IndexAssignStmt",
+    "IndexExpr",
     "GroupExpr",
     "IdentifierExpr",
     "IfStmt",

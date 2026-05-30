@@ -99,6 +99,12 @@ class Lexer:
         elif current == "}":
             self._next()
             self._add_token(result, TokenType.RBRACE, "}", start)
+        elif current == "[":
+            self._next()
+            self._add_token(result, TokenType.LBRACKET, "[", start)
+        elif current == "]":
+            self._next()
+            self._add_token(result, TokenType.RBRACKET, "]", start)
         elif current == "+":
             self._next()
             self._add_token(result, TokenType.PLUS, "+", start)

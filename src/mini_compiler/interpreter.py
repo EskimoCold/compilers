@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .ast_nodes import (
+    ArrayLiteral,
     AssignStmt,
     BinaryExpr,
     BlockStmt,
@@ -13,6 +14,8 @@ from .ast_nodes import (
     GroupExpr,
     IdentifierExpr,
     IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
     NumberLiteral,
     PrintStmt,
     ReturnStmt,
@@ -60,6 +63,8 @@ class Interpreter:
             self._exec_return(statement)
         elif isinstance(statement, ExprStmt):
             self.eval(statement.expr)
+        elif isinstance(statement, IndexAssignStmt):
+            self._exec_index_assign(statement)
         else:
             raise RuntimeError(f"Unsupported statement: {type(statement).__name__}")
 
@@ -78,6 +83,10 @@ class Interpreter:
             return self._eval_binary(expression)
         if isinstance(expression, CallExpr):
             return self._eval_call(expression)
+        if isinstance(expression, ArrayLiteral):
+            return [self.eval(el) for el in expression.elements]
+        if isinstance(expression, IndexExpr):
+            return self._eval_index(expression)
         raise RuntimeError(f"Unsupported expression: {type(expression).__name__}")
 
     def _exec_var(self, stmt: VarStmt) -> None:
@@ -136,6 +145,36 @@ class Interpreter:
         finally:
             self._environment = previous_env
         return None
+
+    def _exec_index_assign(self, stmt: IndexAssignStmt) -> None:
+        array = self._environment.get(stmt.array_name)
+        if not isinstance(array, list):
+            raise RuntimeError(
+                f"Cannot index non-array value '{stmt.array_name}'."
+            )
+        index = self.eval(stmt.index)
+        if not isinstance(index, (int, float)) or isinstance(index, bool):
+            raise RuntimeError("Array index must be a number.")
+        i = int(index)
+        if i < 0 or i >= len(array):
+            raise RuntimeError(
+                f"Index {i} out of bounds for array of length {len(array)}."
+            )
+        array[i] = self.eval(stmt.value)
+
+    def _eval_index(self, expr: IndexExpr) -> Any:
+        array = self.eval(expr.array)
+        if not isinstance(array, list):
+            raise RuntimeError("Cannot index a non-array value.")
+        index = self.eval(expr.index)
+        if not isinstance(index, (int, float)) or isinstance(index, bool):
+            raise RuntimeError("Array index must be a number.")
+        i = int(index)
+        if i < 0 or i >= len(array):
+            raise RuntimeError(
+                f"Index {i} out of bounds for array of length {len(array)}."
+            )
+        return array[i]
 
     def _eval_unary(self, expr: UnaryExpr) -> Any:
         operand = self.eval(expr.operand)
@@ -229,4 +268,6 @@ def _stringify(value: Any) -> str:
         return "false"
     if isinstance(value, float) and value.is_integer():
         return str(int(value))
+    if isinstance(value, list):
+        return "[" + ", ".join(_stringify(v) for v in value) + "]"
     return str(value)

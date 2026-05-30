@@ -106,5 +106,23 @@ class CallExpr(Expr):
 
 
 @dataclass(frozen=True)
+class ArrayLiteral(Expr):
+    elements: tuple[Expr, ...]
+
+
+@dataclass(frozen=True)
+class IndexExpr(Expr):
+    array: Expr
+    index: Expr
+
+
+@dataclass(frozen=True)
+class IndexAssignStmt(Stmt):
+    array_name: str
+    index: Expr
+    value: Expr
+
+
+@dataclass(frozen=True)
 class Script:
     statements: tuple[Stmt, ...]

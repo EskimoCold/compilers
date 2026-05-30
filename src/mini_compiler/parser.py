@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .ast_nodes import (
+    ArrayLiteral,
     AssignStmt,
     BinaryExpr,
     BlockStmt,
@@ -11,6 +12,8 @@ from .ast_nodes import (
     GroupExpr,
     IdentifierExpr,
     IfStmt,
+    IndexAssignStmt,
+    IndexExpr,
     NumberLiteral,
     PrintStmt,
     ReturnStmt,
@@ -64,6 +67,9 @@ class Parser:
         if self._check(TokenType.ID) and self._check_next(TokenType.EQ):
             return self._parse_assign()
 
+        if self._check(TokenType.ID) and self._check_next(TokenType.LBRACKET):
+            return self._parse_index_assign()
+
         if self._check(TokenType.ID) and self._check_next(TokenType.LPAREN):
             return self._parse_expr_stmt()
 
@@ -88,6 +94,16 @@ class Parser:
             value = self._parse_expression()
         self._consume(TokenType.SEMICOLON, "Expected ';' after return")
         return ReturnStmt(value)
+
+    def _parse_index_assign(self) -> Stmt:
+        name = self._consume(TokenType.ID, "Expected array name").value
+        self._consume(TokenType.LBRACKET, "Expected '['")
+        index = self._parse_expression()
+        self._consume(TokenType.RBRACKET, "Expected ']'")
+        self._consume(TokenType.EQ, "Expected '=' after index")
+        value = self._parse_expression()
+        self._consume(TokenType.SEMICOLON, "Expected ';' after index assignment")
+        return IndexAssignStmt(name, index, value)
 
     def _parse_expr_stmt(self) -> Stmt:
         expr = self._parse_expression()
@@ -197,17 +213,24 @@ class Parser:
 
     def _parse_call(self) -> Expr:
         expr = self._parse_primary()
-        while self._match(TokenType.LPAREN):
-            args: list[Expr] = []
-            if not self._check(TokenType.RPAREN):
-                args.append(self._parse_expression())
-                while self._match(TokenType.COMMA):
+        while True:
+            if self._match(TokenType.LPAREN):
+                args: list[Expr] = []
+                if not self._check(TokenType.RPAREN):
                     args.append(self._parse_expression())
-            self._consume(TokenType.RPAREN, "Expected ')' after arguments")
-            if isinstance(expr, IdentifierExpr):
-                expr = CallExpr(expr.name, tuple(args))
+                    while self._match(TokenType.COMMA):
+                        args.append(self._parse_expression())
+                self._consume(TokenType.RPAREN, "Expected ')' after arguments")
+                if isinstance(expr, IdentifierExpr):
+                    expr = CallExpr(expr.name, tuple(args))
+                else:
+                    raise self._error(self._previous(), "Expected function name before '('")
+            elif self._match(TokenType.LBRACKET):
+                index = self._parse_expression()
+                self._consume(TokenType.RBRACKET, "Expected ']' after index")
+                expr = IndexExpr(expr, index)
             else:
-                raise self._error(self._previous(), "Expected function name before '('")
+                break
         return expr
 
     def _parse_primary(self) -> Expr:
@@ -228,6 +251,15 @@ class Parser:
             inner = self._parse_expression()
             self._consume(TokenType.RPAREN, "Expected ')' after expression")
             return GroupExpr(inner)
+
+        if self._match(TokenType.LBRACKET):
+            elements: list[Expr] = []
+            if not self._check(TokenType.RBRACKET):
+                elements.append(self._parse_expression())
+                while self._match(TokenType.COMMA):
+                    elements.append(self._parse_expression())
+            self._consume(TokenType.RBRACKET, "Expected ']' after array elements")
+            return ArrayLiteral(tuple(elements))
 
         raise self._error(self._peek(), "Expected expression")
 
